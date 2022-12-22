@@ -8,9 +8,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
+
+	smurfsapi "awesome/smurfs/api"
 )
 
 const (
@@ -24,12 +28,37 @@ type application struct {
 }
 
 func newApplication() *application {
+	handler := mountModules()
 	return &application{Server: &http.Server{
 		Addr:              ":8080",
 		ReadTimeout:       serverReadTimeOut,
 		ReadHeaderTimeout: serverReadHeaderTimeout,
 		WriteTimeout:      serverWriteTimeout,
+		Handler:           handler,
 	}}
+}
+
+func mountModules() chi.Router {
+	router := router()
+	smurfsapi.Mount(router)
+	return router
+}
+
+func router() chi.Router {
+	router := chi.NewRouter()
+	router.Use(middleware.Recoverer)
+	router.Use(middleware.Compress(5))
+	router.Use(middleware.RealIP)
+	router.Use(middleware.GetHead)
+	router.Use(middleware.Timeout(2 * time.Second))
+
+	router.Use(middleware.SetHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"))
+	router.Use(middleware.SetHeader("X-Frame-Options", "DENY"))
+	router.Use(middleware.SetHeader("X-Content-Type-Options", "nosniff"))
+	router.Use(middleware.SetHeader("X-DNS-Prefetch-Control", "off"))
+	router.Use(middleware.SetHeader("Referrer-Policy", "no-referrer"))
+
+	return router
 }
 
 func (a *application) start() {

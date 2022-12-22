@@ -6,7 +6,9 @@ require github.com/rs/zerolog v1.28.0
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/go-chi/chi/v5 v5.0.8 // indirect
 	github.com/go-resty/resty/v2 v2.7.0 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
