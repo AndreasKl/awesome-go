@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
 
+	loginapi "awesome/login/api"
 	smurfsapi "awesome/smurfs/api"
 )
 
@@ -39,12 +40,31 @@ func newApplication() *application {
 }
 
 func mountModules() chi.Router {
-	router := router()
-	smurfsapi.Mount(router)
+	router := coreRouter()
+	if err := smurfsapi.Mount(router); err != nil {
+		log.Panic().Err(err).Msg("Unable to mount smurfs module.")
+	}
+	if err := loginapi.Mount(router); err != nil {
+		log.Panic().Err(err).Msg("Unable to mount login module.")
+	}
+
+	dumpRoutes(router)
 	return router
 }
 
-func router() chi.Router {
+func dumpRoutes(router chi.Router) {
+	log.Debug().Msg("Dumping chi routes:")
+	walkFunc := func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
+		log.Debug().Msgf("%s %s\n", method, route)
+		return nil
+	}
+
+	if err := chi.Walk(router, walkFunc); err != nil {
+		log.Debug().Msgf("Logging err: %s\n", err.Error())
+	}
+}
+
+func coreRouter() chi.Router {
 	router := chi.NewRouter()
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.Compress(5))
@@ -52,7 +72,6 @@ func router() chi.Router {
 	router.Use(middleware.GetHead)
 	router.Use(middleware.Timeout(2 * time.Second))
 
-	router.Use(middleware.SetHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"))
 	router.Use(middleware.SetHeader("X-Frame-Options", "DENY"))
 	router.Use(middleware.SetHeader("X-Content-Type-Options", "nosniff"))
 	router.Use(middleware.SetHeader("X-DNS-Prefetch-Control", "off"))
